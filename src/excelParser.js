@@ -127,6 +127,10 @@ function parseExcel(filePath) {
     throw new Error('No valid rows found in Sale Compare format.');
   }
 
+  return buildReport(rows);
+}
+
+function buildReport(rows, titleDate = null) {
   const totalToday = rows.reduce((s, r) => s + r.today, 0);
   const totalBase = rows.reduce((s, r) => s + r.base, 0);
   const totalGrowth = toPercent(totalToday, totalBase);
@@ -180,7 +184,7 @@ function parseExcel(filePath) {
   const bottomCategories = [...categoryGrowth].reverse().slice(0, 5).reverse();
 
   return {
-    titleDate: new Date().toLocaleDateString('en-US', {
+    titleDate: titleDate || new Date().toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -196,4 +200,80 @@ function parseExcel(filePath) {
   };
 }
 
-module.exports = { parseExcel };
+function normalizeBranchFromApi(branchName) {
+  const name = String(branchName || '').split('-/-')[1] || '';
+  const key = name.trim().toLowerCase();
+  return BRANCH_ALIAS_MAP.get(key) || name.trim();
+}
+
+function normalizeCategoryFromApi(categoryName) {
+  return String(categoryName || '').trim();
+}
+
+function parseDateFromDtype(dtype) {
+  const m = String(dtype || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m;
+  return new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
+}
+
+function getAvgDivisorFromDailyDate(sampleDate) {
+  if (!sampleDate) return 1;
+  const day = sampleDate.getDate();
+  if (day > 1) return day - 1;
+
+  const year = sampleDate.getFullYear();
+  const month = sampleDate.getMonth(); // 0-based
+  const lastDayPrevMonth = new Date(year, month, 0).getDate();
+  return Math.max(1, lastDayPrevMonth);
+}
+
+function parseSalesJson(dailySales, monthlySales) {
+  if (!Array.isArray(dailySales) || !dailySales.length) {
+    throw new Error('dailySales array is required');
+  }
+  if (!Array.isArray(monthlySales) || !monthlySales.length) {
+    throw new Error('monthlySales array is required');
+  }
+
+  const dailyMap = new Map();
+  dailySales.forEach((r) => {
+    const branch = normalizeBranchFromApi(r.branch_name);
+    const category = normalizeCategoryFromApi(r.product_category_name);
+    const today = toNumber(r.saleamnt);
+    if (!branch || !category) return;
+    const key = `${branch}||${category}`;
+    dailyMap.set(key, (dailyMap.get(key) || 0) + today);
+  });
+
+  const sampleDate = parseDateFromDtype(dailySales[0]?.dtype);
+  const avgDivisor = getAvgDivisorFromDailyDate(sampleDate);
+
+  const monthlyMap = new Map();
+  monthlySales.forEach((r) => {
+    const branch = normalizeBranchFromApi(r.branch_name);
+    const category = normalizeCategoryFromApi(r.product_category_name);
+    const monthlyTotal = toNumber(r.saleamnt);
+    if (!branch || !category) return;
+    const key = `${branch}||${category}`;
+    monthlyMap.set(key, (monthlyMap.get(key) || 0) + monthlyTotal);
+  });
+
+  const allKeys = new Set([...dailyMap.keys(), ...monthlyMap.keys()]);
+  const rows = [];
+  allKeys.forEach((key) => {
+    const [branch, category] = key.split('||');
+    if (!BRANCH_ORDER.includes(branch)) return;
+    const today = dailyMap.get(key) || 0;
+    const base = (monthlyMap.get(key) || 0) / avgDivisor;
+    rows.push({ branch, category, today, base });
+  });
+
+  const titleDate = sampleDate
+    ? sampleDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
+
+  return buildReport(rows, titleDate);
+}
+
+module.exports = { parseExcel, parseSalesJson };
