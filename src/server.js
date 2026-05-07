@@ -8,7 +8,7 @@ const { parseExcel, parseSalesJson } = require('./excelParser');
 const { renderDashboardImage } = require('./imageRenderer');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 const host = process.env.HOST || '0.0.0.0';
 
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
