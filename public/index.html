@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sale Compare PNG Generator</title>
+    <style>
+      body { font-family: sans-serif; margin: 40px; background:#f2f5fb; color:#163d6d; }
+      .card { max-width: 760px; margin: 0 auto; background:white; border-radius:16px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+      h1 { margin-top:0; }
+      button { background:#1f5fa8; color:#fff; border:0; border-radius:8px; padding:12px 16px; cursor:pointer; }
+      #result { margin-top: 20px; word-break: break-all; }
+      img { max-width:100%; margin-top: 16px; border-radius: 12px; border:1px solid #ddd; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Upload Excel and Get PNG URL</h1>
+      <form id="f">
+        <input type="file" name="file" accept=".xlsx,.xls" required />
+        <button type="submit">Generate</button>
+      </form>
+      <div id="result"></div>
+    </div>
+    <script>
+      const form = document.getElementById('f');
+      const result = document.getElementById('result');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        result.textContent = 'Generating...';
+        const fd = new FormData(form);
+        try {
+          const res = await fetch('/api/generate', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Request failed');
+          result.innerHTML = `<div><b>image url:</b> <a href="${data.imageUrl}" target="_blank">${data.imageUrl}</a></div><img src="${data.imageUrl}"/>`;
+        } catch (err) {
+          result.textContent = err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
