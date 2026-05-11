@@ -145,15 +145,17 @@ function buildReport(rows, titleDate = null) {
 
     if (!byBranchCategoryMap.has(r.branch)) byBranchCategoryMap.set(r.branch, new Map());
     const catMap = byBranchCategoryMap.get(r.branch);
-    if (!catMap.has(r.category)) catMap.set(r.category, 0);
-    catMap.set(r.category, catMap.get(r.category) + r.today);
+    if (!catMap.has(r.category)) catMap.set(r.category, { today: 0, base: 0 });
+    const catVals = catMap.get(r.category);
+    catVals.today += r.today;
+    catVals.base += r.base;
   }
 
   const branchGrowth = BRANCH_ORDER.filter((branch) => byBranchMap.has(branch))
     .map((branch) => {
       const vals = byBranchMap.get(branch);
       const topCategoryEntry = Array.from((byBranchCategoryMap.get(branch) || new Map()).entries())
-        .sort((a, b) => b[1] - a[1])[0];
+        .sort((a, b) => toPercent(b[1].today, b[1].base) - toPercent(a[1].today, a[1].base))[0];
       return {
         branch,
         today: vals.today,
