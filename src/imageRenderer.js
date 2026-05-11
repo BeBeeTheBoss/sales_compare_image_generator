@@ -17,6 +17,9 @@ function pct(v) {
   return `${sign}${Math.round(v)}%`;
 }
 
+const EXCLUDED_CATEGORY_NAMES = new Set(['Promotion/Sector', 'Office Use']);
+const EXCLUDED_BRANCH_NAMES = new Set(['Clearance Sale']);
+
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -204,22 +207,20 @@ async function renderDashboardImage(report, outputPath) {
     'Sales Performance by Region & Branch'
   );
 
-  drawPanel(
-    ctx,
-    24,
-    600,
-    900,
-    430,
-    'Top & Bottom Performing Categories (Growth %)'
-  );
+  const categoryPanel = {
+    x: 24,
+    y: 600,
+    w: 1872,
+    h: 430
+  };
 
   drawPanel(
     ctx,
-    950,
-    600,
-    946,
-    430,
-    'Strategic Outlook & Post-Holiday Actions'
+    categoryPanel.x,
+    categoryPanel.y,
+    categoryPanel.w,
+    categoryPanel.h,
+    'Top & Bottom Performing Categories (Growth %)'
   );
 
   // =============================
@@ -234,8 +235,10 @@ async function renderDashboardImage(report, outputPath) {
   ctx.arc(165, 395, 110, 0, Math.PI * 2);
   ctx.stroke();
 
-  // GREEN PROGRESS
-  ctx.strokeStyle = '#2faa46';
+  // PROGRESS (green for positive, red for negative)
+  const isGrowthUp = report.totalGrowth >= 0;
+  const growthRatio = Math.min(Math.abs(report.totalGrowth), 100) / 100;
+  ctx.strokeStyle = isGrowthUp ? '#2faa46' : '#d94b3d';
 
   ctx.beginPath();
   ctx.arc(
@@ -243,8 +246,7 @@ async function renderDashboardImage(report, outputPath) {
     395,
     110,
     -Math.PI / 2,
-    (-Math.PI / 2) +
-      (Math.PI * 2 * (Math.min(report.totalGrowth, 100) / 100))
+    (-Math.PI / 2) + (Math.PI * 2 * growthRatio)
   );
 
   ctx.stroke();
@@ -257,7 +259,7 @@ async function renderDashboardImage(report, outputPath) {
   ctx.fill();
 
   // CENTER TEXT
-  ctx.fillStyle = '#2faa46';
+  ctx.fillStyle = isGrowthUp ? '#2faa46' : '#d94b3d';
   ctx.font = `700 56px ${FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.fillText(pct(report.totalGrowth), 165, 414);
@@ -378,8 +380,11 @@ async function renderDashboardImage(report, outputPath) {
   // TABLE ROWS
   // =============================
 
+  const branchRows = report.branchGrowthSorted
+    .filter((r) => !EXCLUDED_BRANCH_NAMES.has(r.branch));
+
   const tableRows = [
-    ...report.branchGrowthSorted.slice(0, 4),
+    ...branchRows.slice(0, 4),
     {
       branch: 'Grand Total',
       growth: report.totalGrowth,
@@ -425,88 +430,58 @@ async function renderDashboardImage(report, outputPath) {
   // CATEGORY BARS
   // =============================
 
-  const pos = [...report.topCategories].sort((a, b) => b.growth - a.growth).slice(0, 2);
-  const neg = [...report.bottomCategories].sort((a, b) => a.growth - b.growth).slice(0, 4);
-  const startX = 468;
+  const pos = [...report.topCategories]
+    .filter((c) => !EXCLUDED_CATEGORY_NAMES.has(c.category))
+    .sort((a, b) => b.growth - a.growth)
+    .slice(0, 2);
+  const neg = [...report.bottomCategories]
+    .filter((c) => !EXCLUDED_CATEGORY_NAMES.has(c.category))
+    .sort((a, b) => a.growth - b.growth)
+    .slice(0, 4);
+  const startX = categoryPanel.x + Math.floor(categoryPanel.w / 2) - 16;
+  const categoryClipX = categoryPanel.x + 24;
+  const categoryClipY = categoryPanel.y + 75;
+  const categoryClipW = categoryPanel.w - 48;
+  const categoryClipH = categoryPanel.h - 90;
+  const barMaxW = 430;
+  const widthByPct = (growth) => {
+    const p = Math.min(Math.abs(growth), 100);
+    return Math.max(24, (barMaxW * p) / 100);
+  };
 
-  ctx.font = `400 24px ${FONT_FAMILY}`;
-  ctx.textAlign = 'right';
-  withClip(ctx, 215, 675, 700, 340, () => pos.forEach((c, i) => {
-    const y = 718 + i * 50;
-    const barWidth = Math.min(300, Math.max(20, Math.abs(c.growth) * 0.16));
-    ctx.fillStyle = '#f4f6fb';
-    ctx.fillText(fitText(ctx, c.category, 250), startX - 10, y + 4);
+  withClip(ctx, categoryClipX, categoryClipY, categoryClipW, categoryClipH, () => pos.forEach((c, i) => {
+    const y = 718 + i * 64;
+    const barWidth = widthByPct(c.growth);
     ctx.fillStyle = '#2fa44a';
-    ctx.fillRect(startX, y - 21, barWidth, 40);
+    ctx.fillRect(startX, y - 21, barWidth, 42);
+    ctx.fillStyle = '#f4f6fb';
+    ctx.font = `400 34px ${FONT_FAMILY}`;
+    ctx.textAlign = 'right';
+    ctx.fillText(fitText(ctx, c.category, 520), startX - 14, y + 4);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#2fa44a';
-    ctx.font = `700 22px ${FONT_FAMILY}`;
+    ctx.font = `700 32px ${FONT_FAMILY}`;
     ctx.fillText(pct(c.growth), startX + barWidth + 8, y + 4);
-    ctx.textAlign = 'right';
-    ctx.font = `400 24px ${FONT_FAMILY}`;
   }));
 
-  withClip(ctx, 215, 675, 700, 340, () => neg.forEach((c, i) => {
-    const y = 818 + i * 50;
-    ctx.fillStyle = '#ff4e40';
-    ctx.font = `700 28px ${FONT_FAMILY}`;
-    ctx.fillText(pct(c.growth), startX, y + 3);
+  withClip(ctx, categoryClipX, categoryClipY, categoryClipW, categoryClipH, () => neg.forEach((c, i) => {
+    const y = 848 + i * 64;
+    const barWidth = widthByPct(c.growth);
     ctx.fillStyle = '#e14335';
-    ctx.fillRect(startX + 3, y - 21, 4, 30);
+    ctx.fillRect(startX - barWidth, y - 21, barWidth, 42);
+
     ctx.fillStyle = '#f4f6fb';
-    ctx.font = `400 24px ${FONT_FAMILY}`;
+    ctx.font = `400 34px ${FONT_FAMILY}`;
     ctx.textAlign = 'left';
-    ctx.fillText(fitText(ctx, c.category, 385), startX + 12, y + 2);
+    ctx.fillText(fitText(ctx, c.category, 580), startX + 14, y + 4);
+
+    ctx.fillStyle = '#ff4e40';
+    ctx.font = `700 32px ${FONT_FAMILY}`;
     ctx.textAlign = 'right';
+    ctx.fillText(pct(c.growth), startX - barWidth - 12, y + 4);
   }));
 
   ctx.textAlign = 'left';
-
-  // =============================
-  // STRATEGIC BULLETS
-  // =============================
-
-  const bullets = [
-    {
-      h: 'Inventory Liquidity Push',
-      b: 'Clear slow movers in Stationery & Digital Equipment. Target 97-day DOI.'
-    },
-    {
-      h: 'Capitalize on Demand',
-      b: 'Reinforce stock of Office Use — strongest growth today.'
-    },
-    {
-      h: 'Branch Playbook',
-      b: 'Replicate South Dagon success at PRO 1 PLUS (Terminal M).'
-    },
-    {
-      h: 'Recover Grand Total',
-      b: `Today ${pct(
-        report.totalGrowth
-      )} vs base — focus on top 3 declining categories.`
-    }
-  ];
-
-  withClip(ctx, 978, 676, 900, 338, () => bullets.forEach((item, i) => {
-    const y = 715 + i * 78;
-
-    // BULLET
-    ctx.fillStyle = '#e5b949';
-
-    ctx.beginPath();
-    ctx.arc(1002, y - 8, 12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // TITLE
-    ctx.fillStyle = '#f7f9fd';
-    ctx.font = `700 24px ${FONT_FAMILY}`;
-    ctx.fillText(fitText(ctx, item.h, 760), 1032, y);
-
-    // DESCRIPTION
-    ctx.fillStyle = '#c5cfdd';
-    ctx.font = `400 18px ${FONT_FAMILY}`;
-    ctx.fillText(fitText(ctx, item.b, 790), 1032, y + 32);
-  }));
 
   // =============================
   // EXPORT
