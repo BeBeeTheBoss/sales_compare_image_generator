@@ -31,7 +31,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function drawPanel(ctx, x, y, w, h, title) {
-  ctx.fillStyle = '#163d6d';
+  ctx.fillStyle = '#223876';
   roundRect(ctx, x, y, w, h, 18);
   ctx.fill();
 
@@ -40,7 +40,7 @@ function drawPanel(ctx, x, y, w, h, title) {
   ctx.stroke();
 
   if (title) {
-    ctx.fillStyle = '#244f87';
+    ctx.fillStyle = '#2f4e98';
     roundRect(ctx, x + 12, y + 12, w - 24, 54, 10);
     ctx.fill();
 
@@ -160,25 +160,25 @@ async function renderDashboardImage(report, outputPath) {
   // BACKGROUND
   // =============================
 
-  ctx.fillStyle = '#06214a';
+  ctx.fillStyle = '#0a1f4e';
   ctx.fillRect(0, 0, width, height);
 
   // HEADER
   ctx.fillStyle = '#f2f0ea';
   ctx.fillRect(0, 0, width, 130);
 
-  ctx.fillStyle = '#123760';
+  ctx.fillStyle = '#173a72';
   ctx.font = `700 40px ${FONT_FAMILY}`;
   ctx.fillText(
-    `PRO1 Sales Performance Summary: ${report.titleDate}`,
+    `PRO1 Global Sales Performance Summary: ${report.titleDate}`,
     30,
     72
   );
 
-  ctx.fillStyle = '#58697f';
+  ctx.fillStyle = '#6d7f98';
   ctx.font = `italic 18px ${FONT_FAMILY}`;
   ctx.fillText(
-    "Analysis of Today's Sale vs. Base Avg. with Holiday Context.",
+    "Analysis of Today's Sale vs. Base Avg.",
     30,
     108
   );
@@ -277,7 +277,7 @@ async function renderDashboardImage(report, outputPath) {
   ctx.font = `400 26px ${FONT_FAMILY}`;
   ctx.fillText('Grand Total (Vs. Base)', 355, 340);
 
-  ctx.strokeStyle = '#42699a';
+  ctx.strokeStyle = '#4667a4';
   ctx.lineWidth = 2;
 
   ctx.beginPath();
@@ -324,7 +324,7 @@ async function renderDashboardImage(report, outputPath) {
   // SIMPLE MAP SHAPE
   // =============================
 
-  ctx.fillStyle = '#214978';
+  ctx.fillStyle = '#2b4f8c';
   roundRect(ctx, 995, 310, 200, 260, 10);
   ctx.fill();
 
@@ -365,7 +365,7 @@ async function renderDashboardImage(report, outputPath) {
   // TABLE HEADER
   // =============================
 
-  ctx.fillStyle = '#2b5b92';
+  ctx.fillStyle = '#2f4f97';
   roundRect(ctx, 1202, 310, 674, 44, 6);
   ctx.fill();
 
@@ -374,7 +374,7 @@ async function renderDashboardImage(report, outputPath) {
 
   ctx.fillText('Location', 1214, 338);
   ctx.fillText('Growth', 1478, 338);
-  ctx.fillText('Key Driver', 1583, 338);
+  ctx.fillText('Category', 1583, 338);
 
   // =============================
   // TABLE ROWS
@@ -398,10 +398,10 @@ async function renderDashboardImage(report, outputPath) {
     const isGrand = i === tableRows.length - 1;
 
     ctx.fillStyle = isGrand
-      ? '#f4dfaa'
+      ? '#e8d39b'
       : i % 2 === 0
-      ? '#ece2c8'
-      : '#e4dbc2';
+      ? '#ddd5ba'
+      : '#d3cbb0';
 
     roundRect(ctx, 1202, y - 22, 674, 36, 4);
     ctx.fill();

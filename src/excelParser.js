@@ -11,7 +11,7 @@ const BRANCH_ORDER = [
   'Aye Thar Yar',
   'Mingalardon',
   'Bago',
-  'PRO1 Plus',
+  'PRO1 Global',
   'South Dagon',
   'Da Nyin Gone',
   'Nay Pyi Taw',
@@ -33,14 +33,15 @@ const BRANCH_ALIAS_MAP = new Map([
   ['aye thar yar', 'Aye Thar Yar'],
   ['mingalardon', 'Mingalardon'],
   ['bago', 'Bago'],
-  ['pro 1 plus (terminal m)', 'PRO1 Plus'],
-  ['pro1 plus', 'PRO1 Plus'],
+  ['pro 1 plus (terminal m)', 'PRO1 Global'],
+  ['pro1 plus', 'PRO1 Global'],
   ['south dagon', 'South Dagon'],
   ['da nyin gone', 'Da Nyin Gone'],
   ['nay pyi taw', 'Nay Pyi Taw'],
   ['clearance sale', 'Clearance Sale'],
   ['dc-mingalardon', 'Clearance Sale'],
 ]);
+const EXCLUDED_BRANCH_CATEGORIES = new Set(['Promotion/Sector', 'Office Use']);
 
 function toNumber(value) {
   if (typeof value === 'number') return value;
@@ -138,6 +139,9 @@ function buildReport(rows, titleDate = null) {
   const byBranchMap = new Map();
   const byBranchCategoryMap = new Map();
   for (const r of rows) {
+    const cleanCategory = r.category.replace(/^[0-9]+-/, '').trim();
+    if (EXCLUDED_BRANCH_CATEGORIES.has(cleanCategory)) continue;
+
     if (!byBranchMap.has(r.branch)) byBranchMap.set(r.branch, { today: 0, base: 0 });
     const b = byBranchMap.get(r.branch);
     b.today += r.today;
@@ -145,8 +149,8 @@ function buildReport(rows, titleDate = null) {
 
     if (!byBranchCategoryMap.has(r.branch)) byBranchCategoryMap.set(r.branch, new Map());
     const catMap = byBranchCategoryMap.get(r.branch);
-    if (!catMap.has(r.category)) catMap.set(r.category, { today: 0, base: 0 });
-    const catVals = catMap.get(r.category);
+    if (!catMap.has(cleanCategory)) catMap.set(cleanCategory, { today: 0, base: 0 });
+    const catVals = catMap.get(cleanCategory);
     catVals.today += r.today;
     catVals.base += r.base;
   }
@@ -161,7 +165,7 @@ function buildReport(rows, titleDate = null) {
         today: vals.today,
         base: vals.base,
         growth: toPercent(vals.today, vals.base),
-        keyDriver: topCategoryEntry ? topCategoryEntry[0].replace(/^[0-9]+-/, '') : 'All categories combined',
+        keyDriver: topCategoryEntry ? topCategoryEntry[0] : 'All categories combined',
       };
     });
 
