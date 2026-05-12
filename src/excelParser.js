@@ -41,7 +41,11 @@ const BRANCH_ALIAS_MAP = new Map([
   ['clearance sale', 'Clearance Sale'],
   ['dc-mingalardon', 'Clearance Sale'],
 ]);
-const EXCLUDED_BRANCH_CATEGORIES = new Set(['Promotion/Sector', 'Office Use']);
+const EXCLUDED_DISPLAY_CATEGORIES = new Set([
+  'Promotion/Sector',
+  'Office Use',
+  'Promotion/Discount',
+]);
 
 function toNumber(value) {
   if (typeof value === 'number') return value;
@@ -140,13 +144,15 @@ function buildReport(rows, titleDate = null) {
   const byBranchCategoryMap = new Map();
   for (const r of rows) {
     const cleanCategory = r.category.replace(/^[0-9]+-/, '').trim();
-    if (EXCLUDED_BRANCH_CATEGORIES.has(cleanCategory)) continue;
 
+    // Branch totals and growth must include all categories.
     if (!byBranchMap.has(r.branch)) byBranchMap.set(r.branch, { today: 0, base: 0 });
     const b = byBranchMap.get(r.branch);
     b.today += r.today;
     b.base += r.base;
 
+    // Key driver display should ignore excluded categories.
+    if (EXCLUDED_DISPLAY_CATEGORIES.has(cleanCategory)) continue;
     if (!byBranchCategoryMap.has(r.branch)) byBranchCategoryMap.set(r.branch, new Map());
     const catMap = byBranchCategoryMap.get(r.branch);
     if (!catMap.has(cleanCategory)) catMap.set(cleanCategory, { today: 0, base: 0 });
@@ -173,15 +179,18 @@ function buildReport(rows, titleDate = null) {
 
   const byCategoryMap = new Map();
   for (const r of rows) {
-    if (!byCategoryMap.has(r.category)) byCategoryMap.set(r.category, { today: 0, base: 0 });
-    const c = byCategoryMap.get(r.category);
+    const cleanCategory = r.category.replace(/^[0-9]+-/, '').trim();
+    if (EXCLUDED_DISPLAY_CATEGORIES.has(cleanCategory)) continue;
+
+    if (!byCategoryMap.has(cleanCategory)) byCategoryMap.set(cleanCategory, { today: 0, base: 0 });
+    const c = byCategoryMap.get(cleanCategory);
     c.today += r.today;
     c.base += r.base;
   }
 
   const categoryGrowth = Array.from(byCategoryMap.entries())
     .map(([category, vals]) => ({
-      category: category.replace(/^[0-9]+-/, ''),
+      category,
       growth: toPercent(vals.today, vals.base),
     }))
     .sort((a, b) => b.growth - a.growth);
